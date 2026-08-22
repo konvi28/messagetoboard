@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Обарівський ліцей — Повідомлення</title>
+<style>
+  :root {
+    --bg: #131b34;
+    --panel: #1b2646;
+    --panel-border: #2c3a68;
+    --accent: #3d7bfa;
+    --accent-dim: #274a95;
+    --text: #eef1fb;
+    --text-dim: #9aa5c9;
+    --ok: #35c76e;
+    --err: #e5566b;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: radial-gradient(circle at 20% -10%, #24346a 0%, var(--bg) 55%);
+    color: var(--text);
+    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+
+  .card {
+    width: 100%;
+    max-width: 520px;
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 18px;
+    padding: 32px 28px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.35);
+  }
+
+  .eyebrow {
+    font-size: 13px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 600;
+    margin: 0 0 6px;
+  }
+
+  h1 {
+    margin: 0 0 24px;
+    font-size: 26px;
+    font-weight: 700;
+  }
+
+  label {
+    display: block;
+    font-size: 13px;
+    color: var(--text-dim);
+    margin-bottom: 8px;
+  }
+
+  textarea {
+    width: 100%;
+    min-height: 110px;
+    resize: vertical;
+    background: #0f1730;
+    border: 1px solid var(--panel-border);
+    border-radius: 10px;
+    color: var(--text);
+    font-size: 16px;
+    font-family: inherit;
+    padding: 14px;
+    outline: none;
+    transition: border-color 0.15s ease;
+  }
+
+  textarea:focus { border-color: var(--accent); }
+
+  .row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 16px;
+  }
+
+  button {
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    padding: 12px 22px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s ease, transform 0.1s ease;
+  }
+
+  button:hover { background: #5a8dfb; }
+  button:active { transform: scale(0.98); }
+  button:disabled { background: var(--accent-dim); cursor: default; }
+
+  button.secondary {
+    background: transparent;
+    border: 1px solid var(--panel-border);
+    color: var(--text-dim);
+  }
+  button.secondary:hover { background: #202c52; color: var(--text); }
+
+  .status {
+    font-size: 14px;
+    min-height: 18px;
+  }
+  .status.ok { color: var(--ok); }
+  .status.err { color: var(--err); }
+
+  .current {
+    margin-top: 28px;
+    padding-top: 20px;
+    border-top: 1px solid var(--panel-border);
+  }
+  .current .label { font-size: 13px; color: var(--text-dim); margin-bottom: 6px; }
+  .current .value {
+    font-size: 15px;
+    color: var(--text);
+    white-space: pre-wrap;
+    min-height: 22px;
+  }
+  .current .value.empty { color: var(--text-dim); font-style: italic; }
+
+  .hint {
+    margin-top: 20px;
+    font-size: 12px;
+    color: var(--text-dim);
+    line-height: 1.5;
+  }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <p class="eyebrow">Обарівський ліцей</p>
+  <h1>Повідомлення на табло</h1>
+
+  <label for="msg">Текст повідомлення</label>
+  <textarea id="msg" placeholder="Напр.: Завтра збори не буде" maxlength="200"></textarea>
+
+  <div class="row">
+    <button id="send">Надіслати</button>
+    <button id="clear" class="secondary">Очистити</button>
+    <span id="status" class="status"></span>
+  </div>
+
+  <div class="current">
+    <div class="label">Зараз на пристрої:</div>
+    <div id="currentValue" class="value empty">завантаження…</div>
+  </div>
+
+  <p class="hint">
+    Повідомлення з'явиться на табло протягом ~15 секунд.
+    Під час повітряної тривоги система тимчасово показує "Тривога" /
+    "Відбій повітряної тривоги" — це поле само повернеться до вашого
+    тексту після завершення.
+  </p>
+</div>
+
+<script>
+  // ВАЖЛИВО: заміни на свій реальний хост Firebase Realtime Database
+  const FIREBASE_HOST = "liceum28-63003-default-rtdb.firebaseio.com";
+  const MESSAGE_URL = `https://${FIREBASE_HOST}/device/message.json`;
+
+  const msgEl = document.getElementById("msg");
+  const sendBtn = document.getElementById("send");
+  const clearBtn = document.getElementById("clear");
+  const statusEl = document.getElementById("status");
+  const currentEl = document.getElementById("currentValue");
+
+  function setStatus(text, kind) {
+    statusEl.textContent = text;
+    statusEl.className = "status" + (kind ? " " + kind : "");
+  }
+
+  function showCurrent(text) {
+    if (text) {
+      currentEl.textContent = text;
+      currentEl.classList.remove("empty");
+    } else {
+      currentEl.textContent = "порожньо";
+      currentEl.classList.add("empty");
+    }
+  }
+
+  async function loadCurrent() {
+    try {
+      const res = await fetch(MESSAGE_URL);
+      const text = await res.json();
+      showCurrent(text || "");
+    } catch (e) {
+      currentEl.textContent = "не вдалось завантажити";
+    }
+  }
+
+  async function sendMessage(text) {
+    sendBtn.disabled = true;
+    setStatus("Надсилаю…");
+    try {
+      const res = await fetch(MESSAGE_URL, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(text)
+      });
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      setStatus("Надіслано ✓", "ok");
+      showCurrent(text);
+    } catch (e) {
+      setStatus("Помилка: " + e.message, "err");
+    } finally {
+      sendBtn.disabled = false;
+    }
+  }
+
+  sendBtn.addEventListener("click", () => {
+    const text = msgEl.value.trim();
+    if (!text) {
+      setStatus("Введіть текст", "err");
+      return;
+    }
+    sendMessage(text);
+  });
+
+  clearBtn.addEventListener("click", () => {
+    msgEl.value = "";
+    sendMessage("");
+  });
+
+  loadCurrent();
+</script>
+
+</body>
+</html>
