@@ -85,6 +85,21 @@
     align-items: center;
     gap: 12px;
     margin-top: 16px;
+    flex-wrap: wrap;
+  }
+
+  select {
+    flex: 1 1 auto;
+    min-width: 0;
+    max-width: 100%;
+    background: #0f1730;
+    border: 1px solid var(--panel-border);
+    border-radius: 10px;
+    color: var(--text);
+    font-size: 14px;
+    font-family: inherit;
+    padding: 10px 12px;
+    outline: none;
   }
 
   button {
@@ -97,6 +112,7 @@
     font-weight: 600;
     cursor: pointer;
     transition: background 0.15s ease, transform 0.1s ease;
+    flex: 0 0 auto;
   }
 
   button:hover { background: #5a8dfb; }
