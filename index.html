@@ -185,6 +185,25 @@
     <span id="templateStatus" class="status"></span>
   </div>
 
+  <div class="current">
+    <div class="label">Дзвінок на вихідні: <span id="weekendState">…</span></div>
+    <div class="row" style="margin-top:10px">
+      <button id="toggleWeekend">Перемкнути</button>
+    </div>
+    <span id="weekendStatus" class="status"></span>
+  </div>
+
+  <div class="current">
+    <div class="label">Відтворити трек на пристрої</div>
+    <div class="row" style="margin-top:10px; flex-wrap:wrap">
+      <button data-track="1">Дзвінок</button>
+      <button data-track="7">Повітряна тривога</button>
+      <button data-track="6">Відбій тривоги</button>
+      <button data-track="3">Хвилина мовчання</button>
+    </div>
+    <span id="trackStatus" class="status"></span>
+  </div>
+
   <p class="hint">
     Повідомлення з'явиться на табло протягом ~15 секунд.
     Під час повітряної тривоги система тимчасово показує "Тривога" /
@@ -346,6 +365,87 @@
   });
 
   loadTemplates();
+
+  // ---------------- відтворення треків ----------------
+
+  const PENDING_TRACK_URL = `${DEVICE_URL}/pending_track.json`;
+  const trackStatusEl = document.getElementById("trackStatus");
+
+  function setTrackStatus(text, kind) {
+    trackStatusEl.textContent = text;
+    trackStatusEl.className = "status" + (kind ? " " + kind : "");
+  }
+
+  document.querySelectorAll("button[data-track]").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const track = parseInt(btn.dataset.track, 10);
+      btn.disabled = true;
+      setTrackStatus("Надсилаю команду…");
+      try {
+        const res = await fetch(PENDING_TRACK_URL, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(track)
+        });
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        setTrackStatus(`"${btn.textContent}" відтвориться протягом ~15с ✓`, "ok");
+      } catch (e) {
+        setTrackStatus("Помилка: " + e.message, "err");
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  });
+
+  // ---------------- дзвінок на вихідні ----------------
+
+  const WEEKEND_URL = `${DEVICE_URL}/weekend_bell.json`;
+  const weekendStateEl = document.getElementById("weekendState");
+  const weekendStatusEl = document.getElementById("weekendStatus");
+  const toggleWeekendBtn = document.getElementById("toggleWeekend");
+  let weekendBellValue = true;
+
+  function setWeekendStatus(text, kind) {
+    weekendStatusEl.textContent = text;
+    weekendStatusEl.className = "status" + (kind ? " " + kind : "");
+  }
+
+  function showWeekendState(value) {
+    weekendBellValue = value;
+    weekendStateEl.textContent = value ? "увімкнено" : "вимкнено";
+  }
+
+  async function loadWeekendBell() {
+    try {
+      const res = await fetch(WEEKEND_URL);
+      const value = await res.json();
+      showWeekendState(value === null ? true : value);
+    } catch (e) {
+      weekendStateEl.textContent = "не вдалось завантажити";
+    }
+  }
+
+  toggleWeekendBtn.addEventListener("click", async () => {
+    const newValue = !weekendBellValue;
+    toggleWeekendBtn.disabled = true;
+    setWeekendStatus("Надсилаю…");
+    try {
+      const res = await fetch(WEEKEND_URL, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newValue)
+      });
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      showWeekendState(newValue);
+      setWeekendStatus("Застосується протягом ~15с ✓", "ok");
+    } catch (e) {
+      setWeekendStatus("Помилка: " + e.message, "err");
+    } finally {
+      toggleWeekendBtn.disabled = false;
+    }
+  });
+
+  loadWeekendBell();
 </script>
 
 </body>
